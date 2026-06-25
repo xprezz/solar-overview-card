@@ -10,8 +10,7 @@ import { UnitOfPower } from '../../../const';
 import { createTextWithPopup, renderText } from '../../../helpers/text-utils';
 import { getAuxIconConfigs } from './icon-configs';
 import { renderStaticAuxIcon } from './render-static-aux-icons';
-import { renderIcon, renderGlassGlyph } from '../../../helpers/render-icon';
-import { inverterGlyph } from '../../../helpers/realistic-glyphs';
+import { renderIcon } from '../../../helpers/render-icon';
 import { renderPath } from '../../../helpers/render-path';
 import { renderCircle } from '../../../helpers/render-circle';
 
@@ -237,14 +236,17 @@ export const renderAuxLoadElements = (
 							? 'none'
 							: ''}"
 					>
-						${renderGlassGlyph(
+						${renderIcon(
 							undefined,
-							inverterGlyph,
+							'mdi:current-ac',
+							'inverter-icon-small',
 							0,
 							12,
 							44,
 							44,
+							true,
 							auxStatus === 'on' || auxStatus === '1' ? auxDynamicColour : data.auxOffColour,
+							0.12,
 						)}
 					</g>
 				</svg>

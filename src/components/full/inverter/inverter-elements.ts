@@ -9,8 +9,7 @@ import {
 	sunsynkPowerFlowCardConfig,
 } from '../../../types';
 import { icons } from '../../../helpers/icons';
-import { renderIcon, renderGlassGlyph } from '../../../helpers/render-icon';
-import { inverterGlyph } from '../../../helpers/realistic-glyphs';
+import { renderIcon } from '../../../helpers/render-icon';
 import { UnitOfElectricalCurrent, UnitOfPower } from '../../../const';
 import { createTextWithPopup, renderText } from '../../../helpers/text-utils';
 import { renderPath } from '../../../helpers/render-path';
@@ -140,9 +139,9 @@ export const renderInverterElements = (
 						: config.inverter?.navigate
 						? svg`
 							<a href="#" @click=${(e) => Utils.handleNavigation(e, config.inverter.navigate)}>
-								${renderGlassGlyph(undefined, inverterGlyph, 148, 230, 66, 66, inverterColour)}
+								${renderIcon(undefined, 'mdi:current-ac', 'inverter-icon', 154.5, 237, 54, 54, true, inverterColour, 0.12)}
 							</a>`
-						: renderGlassGlyph(undefined, inverterGlyph, 148, 230, 66, 66, inverterColour),
+						: renderIcon(undefined, 'mdi:current-ac', 'inverter-icon', 154.5, 237, 54, 54, true, inverterColour, 0.12),
 			)}
 			<a
 				href="#"
