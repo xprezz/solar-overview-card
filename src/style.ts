@@ -1,6 +1,13 @@
 import { CSSResultGroup, css, html } from 'lit';
 
 export const styles: CSSResultGroup = css`
+	:host {
+		--sov-radius: 24px;
+		--sov-font: 'Google Sans Text', 'Google Sans', Roboto, system-ui, -apple-system, 'Segoe UI', sans-serif;
+		--sov-font-numeric: 'Google Sans', Roboto, system-ui, sans-serif;
+		--sov-icon-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+	}
+
 	.container {
 		display: flex;
 		flex-direction: column;
@@ -8,25 +15,46 @@ export const styles: CSSResultGroup = css`
 		justify-content: center;
 		height: 100%;
 		width: 100%;
-		padding: 5px;
+		padding: 8px;
+		font-family: var(--sov-font);
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
 	}
 
 	.card {
-		border-radius: var(--ha-card-border-radius, 10px);
+		border-radius: var(--ha-card-border-radius, var(--sov-radius));
 		box-shadow: var(
 			--ha-card-box-shadow,
-			0px 0px 0px 1px rgba(0, 0, 0, 0.12),
-			0px 0px 0px 0px rgba(0, 0, 0, 0.12),
-			0px 0px 0px 0px rgba(0, 0, 0, 0.12)
+			0 1px 2px rgba(0, 0, 0, 0.06),
+			0 4px 12px rgba(0, 0, 0, 0.08)
 		);
 		background: var(--ha-card-background, var(--card-background-color, white));
 		border-width: var(--ha-card-border-width);
-		padding: 0px;
+		padding: 4px;
+		transition: box-shadow 200ms ease;
+	}
+
+	svg ha-icon {
+		filter: drop-shadow(var(--sov-icon-shadow));
+		transition: transform 200ms ease, filter 200ms ease;
+	}
+
+	svg a:hover ha-icon {
+		transform: scale(1.06);
+		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.22)) drop-shadow(0 6px 12px rgba(0, 0, 0, 0.12));
+	}
+
+	svg path[d],
+	svg image {
+		transition: filter 200ms ease;
 	}
 
 	text {
 		text-anchor: middle;
 		dominant-baseline: middle;
+		font-family: var(--sov-font-numeric);
+		font-feature-settings: 'tnum' 1, 'ss01' 1;
+		letter-spacing: 0.01em;
 	}
 
 	.left-align {
@@ -43,9 +71,11 @@ export const styles: CSSResultGroup = css`
 	}
 	.st3 {
 		font-size: 9px;
+		font-weight: 500;
 	}
 	.st4 {
 		font-size: 14px;
+		font-weight: 500;
 	}
 	.st5 {
 		fill: #969696;
@@ -57,13 +87,14 @@ export const styles: CSSResultGroup = css`
 		fill: #5490c2;
 	}
 	.st8 {
-		font-weight: 500;
+		font-weight: 600;
 	}
 	.st9 {
 		fill: #959595;
 	}
 	.st10 {
 		font-size: 16px;
+		font-weight: 600;
 	}
 	.st11 {
 		fill: transparent;
@@ -73,12 +104,17 @@ export const styles: CSSResultGroup = css`
 	}
 	.st13 {
 		font-size: 22px;
+		font-weight: 600;
+		letter-spacing: -0.01em;
 	}
 	.st14 {
 		font-size: 12px;
+		font-weight: 500;
 	}
 	.remaining-energy {
 		font-size: 9px;
+		font-weight: 500;
+		opacity: 0.85;
 	}
 `;
 

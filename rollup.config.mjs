@@ -1,4 +1,4 @@
-import typescript from 'rollup-plugin-typescript2';
+import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import babel from '@rollup/plugin-babel';
@@ -13,7 +13,10 @@ const plugins = [
     main: true,
   }),
   commonjs(),
-  typescript(),
+  typescript({
+    noEmitOnError: false,
+    compilerOptions: { noEmit: false, declaration: false, sourceMap: true },
+  }),
   json(),
   babel({
     exclude: 'node_modules/**',

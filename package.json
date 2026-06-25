@@ -1,6 +1,6 @@
 {
   "name": "solar-overview-card",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Modernized Home Assistant power-flow card — a fork of sunsynk-power-flow-card with restyled icons and Material You polish.",
   "main": "solar-overview-card.js",
   "prettier": {
@@ -48,6 +48,7 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.3.0",
     "@types/lodash.merge": "^4.6.9",
     "@typescript-eslint/eslint-plugin": "^8.1.0",
     "@typescript-eslint/parser": "^8.2.0",
@@ -63,6 +64,7 @@
     "rollup": "^4.17.2",
     "rollup-plugin-serve": "^3.0.0",
     "rollup-plugin-typescript2": "^0.36.0",
+    "tslib": "^2.8.1",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.1.0"
   },
