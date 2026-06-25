@@ -227,27 +227,21 @@ export const renderAuxLoadElements = (
 					y="8"
 					width="44"
 					height="69"
-					viewBox="0 0 44 69"
+					viewBox="0 0 74 91"
 					preserveAspectRatio="xMidYMid meet"
 				>
 					<g
+						transform="translate(0.000000,91.000000) scale(0.100000,-0.100000)"
 						class="${data.auxType === 'inverter' ? '' : 'st12'}"
 						display="${!showAux || [1, 2].includes(additionalAuxLoad)
 							? 'none'
 							: ''}"
+						fill="${auxStatus === 'on' || auxStatus === '1'
+							? `${auxDynamicColour}`
+							: `${data.auxOffColour}`}"
+						stroke="none"
 					>
-						${renderIcon(
-							undefined,
-							'mdi:current-ac',
-							'inverter-icon-small',
-							0,
-							12,
-							44,
-							44,
-							true,
-							auxStatus === 'on' || auxStatus === '1' ? auxDynamicColour : data.auxOffColour,
-							0.12,
-						)}
+						<path d="${icons.inverter}" />
 					</g>
 				</svg>
 				<g

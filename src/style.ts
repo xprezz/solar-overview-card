@@ -214,15 +214,5 @@ export const getDynamicStyles = (data) => html`
 			color: ${data.customGridIconColour} !important;
 			--mdc-icon-size: 32px;
 		}
-
-		.inverter-icon {
-			color: ${data.inverterColour} !important;
-			--mdc-icon-size: 54px;
-		}
-
-		.inverter-icon-small {
-			color: ${data.inverterColour} !important;
-			--mdc-icon-size: 44px;
-		}
 	</style>
 `;
