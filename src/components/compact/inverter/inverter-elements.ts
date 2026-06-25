@@ -9,6 +9,7 @@ import {
 	sunsynkPowerFlowCardConfig,
 } from '../../../types';
 import { icons } from '../../../helpers/icons';
+import { renderIcon } from '../../../helpers/render-icon';
 import {
 	UnitOfElectricalCurrent,
 	UnitOfElectricPotential,
@@ -105,27 +106,14 @@ export const renderInverterElements = (
 					Boolean(config.inverter?.navigate),
 				],
 				() =>
-					config.inverter?.navigate
+					!data.genericInverterImage
+						? svg``
+						: config.inverter?.navigate
 						? svg`
 							<a href="#" @click=${(e) => Utils.handleNavigation(e, config.inverter.navigate)}>
-								<svg x="213.5" y="179.5" width="54"
-									height="79" viewBox="0 0 74 91" preserveAspectRatio="xMidYMid meet"
-									opacity="${!data.genericInverterImage ? 0 : 1}">
-									<g transform="translate(0.000000,91.000000) scale(0.100000,-0.100000)"
-									fill="${inverterColour}" stroke="none">
-										<path d="${icons.inverter}"/>
-									</g>
-								</svg>
+								${renderIcon(undefined, 'mdi:current-ac', 'inverter-icon', 213.5, 192, 54, 54, true, inverterColour, 0.12)}
 							</a>`
-						: svg`
-							<svg x="213.5" y="179.5" width="54"
-								height="79" viewBox="0 0 74 91" preserveAspectRatio="xMidYMid meet"
-								opacity="${!data.genericInverterImage ? 0 : 1}">
-								<g transform="translate(0.000000,91.000000) scale(0.100000,-0.100000)"
-								fill="${inverterColour}" stroke="none">
-									<path d="${icons.inverter}"/>
-								</g>
-							</svg>`,
+						: renderIcon(undefined, 'mdi:current-ac', 'inverter-icon', 213.5, 192, 54, 54, true, inverterColour, 0.12),
 			)}
 			<a
 				href="#"
