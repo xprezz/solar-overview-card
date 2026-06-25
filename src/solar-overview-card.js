@@ -8,7 +8,7 @@
 
 import { LitElement, html, css, svg, nothing } from 'lit';
 
-const CARD_VERSION = '0.1.1';
+const CARD_VERSION = '0.1.2';
 
 // eslint-disable-next-line no-console
 console.info(
@@ -80,6 +80,19 @@ const sectionPower = (hass, section, key = 'power') => {
   if (!section || !section[key]) return 0;
   const v = stateAsWatts(hass, section[key]);
   return section.invert ? -v : v;
+};
+
+// Compute net grid power. Supports either:
+//  - grid.power            (signed; + = import, − = export, flip with invert: true)
+//  - grid.power_import + grid.power_export  (separate sensors → net = import − export)
+const gridNetWatts = (hass, grid) => {
+  if (!grid) return 0;
+  if (grid.power_import || grid.power_export) {
+    const imp = grid.power_import ? Math.abs(stateAsWatts(hass, grid.power_import)) : 0;
+    const exp = grid.power_export ? Math.abs(stateAsWatts(hass, grid.power_export)) : 0;
+    return imp - exp;
+  }
+  return sectionPower(hass, grid);
 };
 
 // --- Card -------------------------------------------------------------------
@@ -168,9 +181,14 @@ class SolarOverviewCard extends LitElement {
     .flow-wrap {
       position: relative;
       width: 100%;
-      aspect-ratio: 2 / 1;
-      min-height: 280px;
+      aspect-ratio: 16 / 9;
+      min-height: 300px;
       margin: 4px auto 14px;
+      /* Subtle radial glow behind the diagram */
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 55%,
+          color-mix(in srgb, var(--so-solar) 6%, transparent) 0%,
+          transparent 70%);
     }
     .flow-svg {
       position: absolute;
@@ -178,7 +196,35 @@ class SolarOverviewCard extends LitElement {
       width: 100%;
       height: 100%;
       pointer-events: none;
+      overflow: visible;
     }
+
+    /* Flowing-dash energy line */
+    .flow-line {
+      fill: none;
+      stroke-linecap: round;
+      stroke-width: 2.5;
+      stroke-dasharray: 1 8;
+      stroke-dashoffset: 0;
+      filter: drop-shadow(0 0 3px var(--line-color, currentColor));
+    }
+    .flow-line.idle { stroke-dasharray: none; opacity: 0.18; }
+    .flow-line.active { animation: so-flow var(--flow-dur, 2.5s) linear infinite; }
+    .flow-line.active.reverse { animation-direction: reverse; }
+    @keyframes so-flow {
+      from { stroke-dashoffset: 0; }
+      to   { stroke-dashoffset: -18; }
+    }
+
+    .flow-line-bg {
+      fill: none;
+      stroke: var(--line-color, currentColor);
+      stroke-opacity: 0.12;
+      stroke-width: 4;
+      stroke-linecap: round;
+    }
+
+    /* Nodes */
     .node {
       position: absolute;
       transform: translate(-50%, -50%);
@@ -188,62 +234,118 @@ class SolarOverviewCard extends LitElement {
       gap: 2px;
       z-index: 2;
       text-align: center;
-      width: 92px;
+      width: 96px;
     }
     .node-icon {
-      width: 56px;
-      height: 56px;
+      position: relative;
+      width: 60px;
+      height: 60px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: color-mix(in srgb, var(--node-color, #888) 16%, var(--so-surface));
-      border: 2px solid var(--node-color, #888);
       color: var(--node-color, #888);
-      --mdc-icon-size: 28px;
-      box-shadow: 0 2px 6px color-mix(in srgb, var(--node-color, #888) 25%, transparent);
-      transition: transform .2s ease;
+      --mdc-icon-size: 30px;
+      background:
+        radial-gradient(circle at 30% 25%,
+          color-mix(in srgb, var(--node-color, #888) 35%, var(--so-surface)) 0%,
+          color-mix(in srgb, var(--node-color, #888) 14%, var(--so-surface)) 55%,
+          color-mix(in srgb, var(--node-color, #888) 8%, var(--so-surface)) 100%);
+      border: 1.5px solid color-mix(in srgb, var(--node-color, #888) 55%, transparent);
+      box-shadow:
+        0 6px 14px -4px color-mix(in srgb, var(--node-color, #888) 50%, transparent),
+        inset 0 1px 0 color-mix(in srgb, #fff 25%, transparent);
+      transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s ease;
+    }
+    .node.active .node-icon::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px solid color-mix(in srgb, var(--node-color, #888) 45%, transparent);
+      opacity: 0;
+      animation: so-pulse 2.6s ease-out infinite;
+    }
+    @keyframes so-pulse {
+      0%   { transform: scale(.85); opacity: .55; }
+      80%  { transform: scale(1.25); opacity: 0; }
+      100% { transform: scale(1.25); opacity: 0; }
     }
     .node.clickable { cursor: pointer; }
     .node.clickable:hover .node-icon { transform: scale(1.06); }
     .node-power {
       font-weight: 700;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--so-on-surface);
-      margin-top: 4px;
+      margin-top: 6px;
       line-height: 1.1;
+      letter-spacing: -0.01em;
     }
     .node-sub {
       font-size: 0.72rem;
       color: var(--so-on-surface-variant);
-      line-height: 1.1;
+      line-height: 1.15;
     }
     .node-label {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 600;
       color: var(--so-on-surface-variant);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
       margin-top: 2px;
     }
-    .node.small { width: 76px; }
-    .node.small .node-icon { width: 44px; height: 44px; --mdc-icon-size: 22px; }
+    .node.small { width: 80px; }
+    .node.small .node-icon { width: 48px; height: 48px; --mdc-icon-size: 24px; }
+
+    /* SOC arc for the battery node */
+    .soc-ring {
+      position: absolute;
+      inset: -5px;
+      transform: rotate(-90deg);
+      pointer-events: none;
+    }
+    .soc-ring circle {
+      fill: none;
+      stroke-width: 3;
+      stroke-linecap: round;
+    }
+    .soc-ring .soc-track { stroke: color-mix(in srgb, var(--node-color, #888) 18%, transparent); }
+    .soc-ring .soc-arc { stroke: var(--node-color, #888); transition: stroke-dashoffset .8s cubic-bezier(.2,.8,.2,1); }
+
+    /* Inverter hub */
     .inverter-hub {
       position: absolute;
       transform: translate(-50%, -50%);
-      width: 54px;
-      height: 54px;
+      width: 72px;
+      height: 72px;
       border-radius: 50%;
-      background: var(--so-surface-2);
-      border: 1.5px solid var(--so-outline);
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 0.65rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      color: var(--so-on-surface-variant);
+      gap: 1px;
+      background:
+        radial-gradient(circle at 30% 25%,
+          color-mix(in srgb, var(--so-solar) 22%, var(--so-surface)) 0%,
+          color-mix(in srgb, var(--so-solar) 8%, var(--so-surface)) 60%,
+          var(--so-surface) 100%);
+      border: 1.5px solid color-mix(in srgb, var(--so-solar) 35%, var(--so-outline));
+      color: var(--so-on-surface);
+      box-shadow:
+        0 10px 24px -8px color-mix(in srgb, var(--so-solar) 40%, transparent),
+        inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent);
       z-index: 2;
+    }
+    .inverter-hub ha-icon {
+      --mdc-icon-size: 30px;
+      color: color-mix(in srgb, var(--so-solar) 75%, var(--so-on-surface));
+    }
+    .inverter-hub .inv-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--so-on-surface-variant);
+      margin-top: -2px;
     }
 
     .tiles {
@@ -340,6 +442,7 @@ class SolarOverviewCard extends LitElement {
       grid: { ...(config.grid || {}) },
       home: { ...(config.home || {}) },
       ev: { ...(config.ev || {}) },
+      inverter: { ...(config.inverter || {}) },
     };
   }
 
@@ -373,26 +476,29 @@ class SolarOverviewCard extends LitElement {
 
   // -------- Flow diagram ----------------------------------------------------
 
-  // Slower, calmer animation: 4.0s (slow) .. 1.5s (fast), based on power (cap at 8 kW)
-  _flowDot(pathId, power, color, reverse = false) {
-    if (!this._config.animate) return nothing;
+  // Returns animation duration (s) per W. Calmer: 4s slow → 2s fast.
+  _flowDur(power) {
     const w = Math.abs(power);
-    if (w < 5) return nothing;
-    const dur = Math.max(1.5, 4.0 - Math.min(w, 8000) / 8000 * 2.5).toFixed(2);
-    return svg`
-      <circle r="4" fill="${color}">
-        <animateMotion dur="${dur}s" repeatCount="indefinite" keyPoints="${reverse ? '1;0' : '0;1'}" keyTimes="0;1">
-          <mpath href="#${pathId}"/>
-        </animateMotion>
-      </circle>`;
+    if (w < 5) return null;
+    return Math.max(2.0, 4.0 - Math.min(w, 8000) / 8000 * 2.0).toFixed(2);
   }
 
-  _nodeEl({ x, y, label, icon, color, power, sub, entityId, small = false }) {
+  _nodeEl({ x, y, label, icon, color, power, sub, entityId, small = false, soc = null, active = false }) {
+    const r = 30, c = 2 * Math.PI * r;
+    const arc = soc != null ? c * (1 - Math.max(0, Math.min(100, soc)) / 100) : null;
     return html`
-      <div class="node ${small ? 'small' : ''} ${entityId ? 'clickable' : ''}"
+      <div class="node ${small ? 'small' : ''} ${active ? 'active' : ''} ${entityId ? 'clickable' : ''}"
            style="left:${x}%; top:${y}%; --node-color:${color};"
            @click=${() => this._click(entityId)}>
-        <div class="node-icon"><ha-icon icon="${icon}"></ha-icon></div>
+        <div class="node-icon">
+          ${soc != null ? svg`
+            <svg class="soc-ring" viewBox="0 0 70 70">
+              <circle class="soc-track" cx="35" cy="35" r="${r}"/>
+              <circle class="soc-arc"   cx="35" cy="35" r="${r}"
+                      stroke-dasharray="${c}" stroke-dashoffset="${arc}"/>
+            </svg>` : nothing}
+          <ha-icon icon="${icon}"></ha-icon>
+        </div>
         ${power != null ? html`<div class="node-power">${power}</div>` : nothing}
         ${sub ? html`<div class="node-sub">${sub}</div>` : nothing}
         <div class="node-label">${label}</div>
@@ -404,16 +510,17 @@ class SolarOverviewCard extends LitElement {
     const hass = this.hass;
     const c = this._config;
 
-    // Section-level powers (respect invert flags)
+    // ---- Powers --------------------------------------------------------------
     const solarW = c.solar.total_power
       ? sectionPower(hass, c.solar, 'total_power')
       : (c.solar.mppts || []).reduce((a, m) => a + stateAsWatts(hass, m.power), 0);
-    const batteryW = sectionPower(hass, c.battery);   // + = charging
-    const gridW    = sectionPower(hass, c.grid);      // + = importing
+    const batteryW = sectionPower(hass, c.battery);
+    const gridW    = gridNetWatts(hass, c.grid);              // + = import, − = export
     const homeW    = sectionPower(hass, c.home);
     const evW      = sectionPower(hass, c.ev);
+    const batterySoc = c.battery.soc ? stateNum(hass, c.battery.soc) : null;
 
-    // Daily totals (kWh) for compact display under each node
+    // ---- Daily totals --------------------------------------------------------
     const solarToday = c.solar.total_today ? stateAsKwh(hass, c.solar.total_today) : null;
     const batToday = c.battery.daily_charge ? stateAsKwh(hass, c.battery.daily_charge) : null;
     const batOutToday = c.battery.daily_discharge ? stateAsKwh(hass, c.battery.daily_discharge) : null;
@@ -422,48 +529,48 @@ class SolarOverviewCard extends LitElement {
     const homeToday = c.home.daily_energy ? stateAsKwh(hass, c.home.daily_energy) : null;
     const evSession = c.ev.session_energy ? stateAsKwh(hass, c.ev.session_energy) : null;
 
-    // ---- Layout in percent coordinates --------------------------------------
+    // ---- Layout (percent coords; preserveAspectRatio="none" stretches SVG) --
     const mppts = (c.solar.mppts || []).filter(m => m && m.power);
     const showMppts = c.show_solar !== false && mppts.length > 0;
-    const inv = { x: 50, y: 55 };               // central inverter hub
-    const battery = { x: 50, y: 92 };           // bottom
-    const grid    = { x: 6,  y: 55 };           // left
-    const home    = { x: 78, y: 55 };           // right of inverter
-    const ev      = { x: 96, y: 55 };           // far right
-    const solarFallback = { x: 50, y: 12 };     // used when no MPPT list
+    const inv = { x: 50, y: 58 };
+    const battery = { x: 50, y: 92 };
+    const grid    = { x: 7,  y: 58 };
+    const home    = { x: 75, y: 58 };
+    const ev      = { x: 94, y: 58 };
+    const solarFallback = { x: 50, y: 10 };
 
-    // MPPT positions: spread across top row
     const n = mppts.length;
     const mpptPos = mppts.map((_, i) => ({
-      x: n === 1 ? 50 : 12 + ((76 / (n - 1)) * i),
-      y: 12,
+      x: n === 1 ? 50 : 14 + ((72 / (n - 1)) * i),
+      y: 10,
     }));
 
-    // ---- SVG path defs (use percent coordinates via viewBox 0..100) --------
-    const lineColor = (w, normal, alt) => Math.abs(w) > 5 ? (w >= 0 ? normal : alt) : normal;
-
+    // ---- Paths ---------------------------------------------------------------
     const mpptPaths = mpptPos.map((p, i) => {
-      // gentle vertical curve into inverter
-      const d = `M ${p.x},${p.y + 5} C ${p.x},${inv.y - 18} ${inv.x},${inv.y - 15} ${inv.x},${inv.y - 5}`;
-      return { id: `p-mppt-${i}`, d, w: stateAsWatts(hass, mppts[i].power) };
+      const d = `M ${p.x},${p.y + 6} C ${p.x},${inv.y - 16} ${inv.x},${inv.y - 16} ${inv.x},${inv.y - 6}`;
+      return { id: `p-mppt-${i}`, d, w: stateAsWatts(hass, mppts[i].power), kind: 'solar' };
     });
 
     const paths = [
       ...mpptPaths,
-      { id: 'p-solar-inv', d: `M ${solarFallback.x},${solarFallback.y + 5} L ${inv.x},${inv.y - 5}`, w: solarW, hide: showMppts },
-      { id: 'p-grid-inv',  d: `M ${grid.x + 4},${grid.y} L ${inv.x - 5},${inv.y}`, w: gridW },
-      { id: 'p-inv-batt',  d: `M ${inv.x},${inv.y + 5} L ${battery.x},${battery.y - 4}`, w: batteryW },
-      { id: 'p-inv-home',  d: `M ${inv.x + 5},${inv.y} L ${home.x - 4},${home.y}`, w: homeW },
-      { id: 'p-home-ev',   d: `M ${home.x + 4},${home.y} L ${ev.x - 4},${ev.y}`, w: evW },
+      { id: 'p-solar-inv', d: `M ${solarFallback.x},${solarFallback.y + 6} L ${inv.x},${inv.y - 6}`, w: solarW, kind: 'solar', hide: showMppts },
+      { id: 'p-grid-inv',  d: `M ${grid.x + 5},${grid.y} L ${inv.x - 6},${inv.y}`,                    w: gridW,    kind: 'grid' },
+      { id: 'p-inv-batt',  d: `M ${inv.x},${inv.y + 6} L ${battery.x},${battery.y - 5}`,              w: batteryW, kind: 'battery' },
+      { id: 'p-inv-home',  d: `M ${inv.x + 6},${inv.y} L ${home.x - 5},${home.y}`,                    w: homeW,    kind: 'home' },
+      { id: 'p-home-ev',   d: `M ${home.x + 5},${home.y} L ${ev.x - 5},${ev.y}`,                      w: evW,      kind: 'ev' },
     ];
 
-    const colorOf = (id, w) => {
-      if (id === 'p-grid-inv') return w >= 0 ? 'var(--so-grid)' : 'var(--so-grid-export)';
-      if (id === 'p-inv-batt') return 'var(--so-battery)';
-      if (id === 'p-inv-home') return 'var(--so-home)';
-      if (id === 'p-home-ev')  return 'var(--so-ev)';
-      return 'var(--so-solar)';
+    const colorOf = (kind, w) => {
+      switch (kind) {
+        case 'grid':    return w >= 0 ? 'var(--so-grid)' : 'var(--so-grid-export)';
+        case 'battery': return 'var(--so-battery)';
+        case 'home':    return 'var(--so-home)';
+        case 'ev':      return 'var(--so-ev)';
+        default:        return 'var(--so-solar)';
+      }
     };
+    // Reverse-flow lines: power flowing AWAY from the inverter (export, discharge)
+    const reverseOf = (kind, w) => (kind === 'grid' && w < 0) || (kind === 'battery' && w < 0);
 
     return html`
       <div class="flow-wrap">
@@ -471,38 +578,47 @@ class SolarOverviewCard extends LitElement {
           <defs>
             ${paths.map(p => svg`<path id="${p.id}" d="${p.d}"/>`)}
           </defs>
-          ${paths.map(p => p.hide ? nothing : svg`
-            <use href="#${p.id}"
-                 stroke="${colorOf(p.id, p.w)}"
-                 stroke-width="0.6"
-                 vector-effect="non-scaling-stroke"
-                 fill="none"
-                 opacity="${Math.abs(p.w) > 5 ? 1 : 0.25}"/>
-          `)}
           ${paths.map(p => {
             if (p.hide) return nothing;
-            const color = colorOf(p.id, p.w);
-            const reverse = (p.id === 'p-grid-inv' && p.w < 0) || (p.id === 'p-inv-batt' && p.w < 0);
-            return this._flowDot(p.id, p.w, color, reverse);
+            const color = colorOf(p.kind, p.w);
+            const dur = this._config.animate ? this._flowDur(p.w) : null;
+            const active = dur != null;
+            const reverse = reverseOf(p.kind, p.w);
+            return svg`
+              <use href="#${p.id}"
+                   class="flow-line-bg"
+                   vector-effect="non-scaling-stroke"
+                   style="--line-color:${color};"/>
+              <use href="#${p.id}"
+                   class="flow-line ${active ? 'active' : 'idle'} ${reverse ? 'reverse' : ''}"
+                   stroke="${color}"
+                   vector-effect="non-scaling-stroke"
+                   style="--line-color:${color}; --flow-dur:${dur || 0}s;"/>
+            `;
           })}
         </svg>
 
-        <div class="inverter-hub" style="left:${inv.x}%; top:${inv.y}%;">INV</div>
+        <div class="inverter-hub" style="left:${inv.x}%; top:${inv.y}%;"
+             title="Inverter"
+             @click=${() => this._click(c.inverter?.status || c.inverter?.temperature)}>
+          <ha-icon icon="${c.inverter?.icon || 'mdi:sine-wave'}"></ha-icon>
+          <div class="inv-label">INV</div>
+        </div>
 
         ${showMppts ? mpptPos.map((p, i) => {
           const m = mppts[i];
           const w = stateAsWatts(hass, m.power);
           const max = numberOr(m.max_power, 0);
-          const pct = max > 0 ? ` · ${Math.round((w / max) * 100)}%` : '';
           return this._nodeEl({
             x: p.x, y: p.y,
             label: m.name || `PV${i + 1}`,
             icon: m.icon || 'mdi:solar-panel',
             color: 'var(--so-solar)',
             power: fmtPower(w, c.decimals_power),
-            sub: max > 0 ? `${Math.round((w / max) * 100)}% of ${(max/1000).toFixed(1)} kW` : nothing,
+            sub: max > 0 ? `${Math.round((w / max) * 100)}% · ${(max/1000).toFixed(1)} kW max` : nothing,
             entityId: m.power,
             small: true,
+            active: w > 5,
           });
         }) : (c.show_solar !== false ? this._nodeEl({
           x: solarFallback.x, y: solarFallback.y,
@@ -512,6 +628,7 @@ class SolarOverviewCard extends LitElement {
           power: fmtPower(solarW, c.decimals_power),
           sub: solarToday != null ? `${fmtEnergy(solarToday, c.decimals_energy)} today` : nothing,
           entityId: c.solar.total_power,
+          active: solarW > 5,
         }) : nothing)}
 
         ${c.show_grid !== false ? this._nodeEl({
@@ -523,7 +640,8 @@ class SolarOverviewCard extends LitElement {
           sub: (impToday != null || expToday != null)
             ? html`${impToday != null ? html`↓${fmtEnergy(impToday, c.decimals_energy)}` : ''}${impToday != null && expToday != null ? ' · ' : ''}${expToday != null ? html`↑${fmtEnergy(expToday, c.decimals_energy)}` : ''}`
             : nothing,
-          entityId: c.grid.power,
+          entityId: c.grid.power || c.grid.power_import,
+          active: Math.abs(gridW) > 5,
         }) : nothing}
 
         ${c.show_battery !== false ? this._nodeEl({
@@ -536,6 +654,8 @@ class SolarOverviewCard extends LitElement {
             ? html`${batToday != null ? html`↑${fmtEnergy(batToday, c.decimals_energy)}` : ''}${batToday != null && batOutToday != null ? ' · ' : ''}${batOutToday != null ? html`↓${fmtEnergy(batOutToday, c.decimals_energy)}` : ''}`
             : nothing,
           entityId: c.battery.power || c.battery.soc,
+          soc: batterySoc,
+          active: Math.abs(batteryW) > 5,
         }) : nothing}
 
         ${c.show_home !== false ? this._nodeEl({
@@ -546,6 +666,7 @@ class SolarOverviewCard extends LitElement {
           power: fmtPower(homeW, c.decimals_power),
           sub: homeToday != null ? `${fmtEnergy(homeToday, c.decimals_energy)} today` : nothing,
           entityId: c.home.power,
+          active: homeW > 5,
         }) : nothing}
 
         ${c.show_ev !== false && (c.ev.power || c.ev.soc || c.ev.session_energy) ? this._nodeEl({
@@ -556,7 +677,9 @@ class SolarOverviewCard extends LitElement {
           power: fmtPower(evW, c.decimals_power),
           sub: evSession != null ? `${fmtEnergy(evSession, c.decimals_energy)} session` : nothing,
           entityId: c.ev.power || c.ev.soc,
+          soc: c.ev.soc ? stateNum(hass, c.ev.soc) : null,
           small: true,
+          active: evW > 5,
         }) : nothing}
       </div>
     `;
@@ -631,7 +754,7 @@ class SolarOverviewCard extends LitElement {
   _gridTile() {
     const hass = this.hass, c = this._config;
     if (c.show_grid === false) return nothing;
-    const power = c.grid.power ? sectionPower(hass, c.grid) : null;
+    const power = (c.grid.power || c.grid.power_import || c.grid.power_export) ? gridNetWatts(hass, c.grid) : null;
     const imp = c.grid.daily_import ? stateAsKwh(hass, c.grid.daily_import) : null;
     const exp = c.grid.daily_export ? stateAsKwh(hass, c.grid.daily_export) : null;
     const pbuy = c.grid.price_import ? stateValue(hass, c.grid.price_import) : null;
@@ -778,6 +901,7 @@ class SolarOverviewCardEditor extends LitElement {
       grid: { ...(config.grid || {}) },
       home: { ...(config.home || {}) },
       ev: { ...(config.ev || {}) },
+      inverter: { ...(config.inverter || {}) },
     };
   }
 
@@ -880,10 +1004,13 @@ class SolarOverviewCardEditor extends LitElement {
       <ha-textfield label="Capacity (kWh)" type="number" min="0" step="0.1" .value=${String(c.battery.capacity_kwh ?? 0)} @input=${(e) => this._setSection('battery', 'capacity_kwh', Number(e.target.value))}></ha-textfield>
 
       <h3>Grid</h3>
-      ${this._entityPicker('Power (+ import)', 'grid', 'power')}
-      <ha-formfield label="Invert power sign (flip import / export direction)">
+      ${this._entityPicker('Net power (+ import / − export)', 'grid', 'power')}
+      <ha-formfield label="Invert net power sign">
         <ha-switch .checked=${!!c.grid.invert} @change=${(e) => this._setSection('grid', 'invert', e.target.checked)}></ha-switch>
       </ha-formfield>
+      <div style="font-size:.78rem;color:var(--secondary-text-color);margin:6px 0;">Or use separate sensors for import/export power (overrides net):</div>
+      ${this._entityPicker('Power: import only', 'grid', 'power_import')}
+      ${this._entityPicker('Power: export only', 'grid', 'power_export')}
       ${this._entityPicker('Daily import', 'grid', 'daily_import')}
       ${this._entityPicker('Daily export', 'grid', 'daily_export')}
       ${this._entityPicker('Import price', 'grid', 'price_import')}
@@ -895,6 +1022,11 @@ class SolarOverviewCardEditor extends LitElement {
         <ha-switch .checked=${!!c.home.invert} @change=${(e) => this._setSection('home', 'invert', e.target.checked)}></ha-switch>
       </ha-formfield>
       ${this._entityPicker('Daily energy', 'home', 'daily_energy')}
+
+      <h3>Inverter</h3>
+      <ha-textfield label="Icon (e.g. mdi:sine-wave, mdi:flash, mdi:cog)" .value=${c.inverter?.icon || ''} @input=${(e) => this._setSection('inverter', 'icon', e.target.value)}></ha-textfield>
+      ${this._entityPicker('Status', 'inverter', 'status', ['sensor', 'binary_sensor'])}
+      ${this._entityPicker('Temperature', 'inverter', 'temperature')}
 
       <h3>EV Charger</h3>
       ${this._entityPicker('Charging power', 'ev', 'power')}
