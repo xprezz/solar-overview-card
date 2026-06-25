@@ -2,7 +2,7 @@
 
 A clean, **Material You** inspired Lovelace card for Home Assistant that visualizes your solar, battery, grid, home and EV charger in one place — with animated power flows, predicted solar production and per-MPPT breakdowns.
 
-![Solar Overview Card preview](https://raw.githubusercontent.com/chmors_microsoft/solar-overview-card/main/docs/preview.png)
+![Solar Overview Card preview](https://raw.githubusercontent.com/xprezz/solar-overview-card/main/docs/preview.png)
 
 ## Features
 
@@ -20,7 +20,7 @@ A clean, **Material You** inspired Lovelace card for Home Assistant that visuali
 ### HACS (recommended)
 
 1. HACS → **⋮ → Custom repositories**
-2. Add `https://github.com/chmors_microsoft/solar-overview-card` as type **Lovelace**
+2. Add `https://github.com/xprezz/solar-overview-card` as type **Lovelace**
 3. Install **Solar Overview Card**, then refresh
 4. Add the card via the dashboard "Add card" menu (look for *Solar Overview Card*)
 

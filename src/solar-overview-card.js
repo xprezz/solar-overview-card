@@ -2,7 +2,7 @@
  * Solar Overview Card
  * A Material You inspired solar / battery / grid / EV overview card for Home Assistant.
  *
- * Repository: https://github.com/chmors_microsoft/solar-overview-card
+ * Repository: https://github.com/xprezz/solar-overview-card
  * License: MIT
  */
 
@@ -724,5 +724,5 @@ window.customCards.push({
   name: 'Solar Overview Card',
   description: 'Material You styled solar / battery / grid / EV overview',
   preview: true,
-  documentationURL: 'https://github.com/chmors_microsoft/solar-overview-card',
+  documentationURL: 'https://github.com/xprezz/solar-overview-card',
 });
